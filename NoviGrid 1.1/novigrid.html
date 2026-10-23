@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NoviGrid</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ng-text:#0b2b3d;--ng-text-dim:#3f6375;--ng-accent:#0b6fa4;
+    --ng-font:'Quicksand','Segoe UI',system-ui,-apple-system,'Helvetica Neue',Roboto,sans-serif;
+    --sheen:linear-gradient(180deg,#ffffff 0%,#f4f7f9 6%,#dfe7ec 22%,#c4d0d8 48%,#aab8c2 70%,#93a4b0 86%,#b9c6cf 100%);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;border-radius:0!important}
+  html,body{height:100%}
+  body{
+    font-family:var(--ng-font);font-weight:600;-webkit-font-smoothing:antialiased;
+    color:var(--ng-text);overflow:hidden;
+    background:linear-gradient(180deg,#d7e2ea 0%,#b8c6d0 100%);
+  }
+  @keyframes menuZoomIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+  .menu-zooming-in{animation:menuZoomIn .22s cubic-bezier(0,0,.2,1) forwards!important;transform-origin:50% 50%}
+  @keyframes fadeInOnly{from{opacity:0}to{opacity:1}}
+  @keyframes recPulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  .clock-badge{font-family:var(--ng-font);font-weight:700;letter-spacing:.04em;color:#12242e;font-variant-numeric:tabular-nums;white-space:nowrap;text-shadow:0 1px 0 rgba(255,255,255,.9)}
+  .clock-badge .ampm{color:var(--ng-accent);margin-left:.25rem;letter-spacing:.06em}
+
+  /* screensaver */
+  .screensaver{position:fixed;inset:0;z-index:9999;background:#000;overflow:hidden}
+  .screensaver.hidden{display:none}
+  .screensaver-image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+  .screensaver-bar{position:absolute;z-index:2;padding:.7rem 1.6rem;pointer-events:none;white-space:nowrap;
+    background:rgba(10,20,28,.72);border:1px solid rgba(255,255,255,.25);
+    box-shadow:0 4px 18px rgba(0,0,0,.6)}
+  .screensaver-bar-text{font-family:var(--ng-font);font-weight:700;color:#eaf6ff;font-size:clamp(.95rem,2.4vh,1.65rem);letter-spacing:.02em;line-height:1;text-shadow:0 1px 0 #000}
+  .screensaver-clock{position:absolute;top:1.4rem;right:1.6rem;z-index:3;font-family:var(--ng-font);font-weight:700;font-size:clamp(1.1rem,2.6vh,1.7rem);letter-spacing:.05em;color:#fff;padding:.2rem .7rem;
+    background:rgba(10,20,28,.72);border:1px solid rgba(255,255,255,.2);
+    font-variant-numeric:tabular-nums;pointer-events:none;white-space:nowrap}
+  .screensaver-clock .ampm{font-size:.75em;color:#9fcbe0;margin-left:.25rem;letter-spacing:.06em}
+
+  /* home */
+  .home-menu{position:fixed;inset:0;z-index:9998;display:none;flex-direction:column;overflow:hidden;background:#0b2b3d url('bg.png') center/cover no-repeat}
+  .home-menu.visible{display:flex}
+  .home-homeclock{position:absolute;top:1.1rem;right:1.3rem;z-index:20;font-size:1.55rem;padding:.35rem 1rem;
+    background:rgba(255,255,255,.92);border:1px solid #5f7484;
+    box-shadow:inset 1px 1px 0 #fff,inset -1px -1px 0 rgba(40,55,65,.5),3px 3px 0 rgba(15,30,40,.45)}
+  .home-homeclock .ampm{font-size:.85rem}
+  .home-content{flex:1;overflow-y:auto;padding:2.4rem;display:flex;flex-direction:column;justify-content:center;align-items:center}
+  .home-inner{max-width:1100px;width:100%;display:flex;flex-direction:column;align-items:center}
+
+  .pellet-row{display:flex;flex-wrap:wrap;gap:2.2rem;justify-content:center;align-items:center;margin-bottom:1rem}
+  .pellet{position:relative;width:172px;height:172px;border-radius:50%!important;cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:1rem;color:#12242e;
+    background:var(--sheen);border:2px solid #5f7484;
+    box-shadow:inset 2px 2px 0 rgba(255,255,255,.95),inset -3px -3px 0 rgba(40,55,65,.6),0 6px 0 rgba(70,89,100,.45),0 10px 18px rgba(0,0,0,.35);
+    transition:transform .1s ease,box-shadow .1s ease}
+  .pellet::after{content:"";position:absolute;inset:9px;border-radius:50%!important;border:1px solid rgba(255,255,255,.7);box-shadow:inset 0 0 0 1px rgba(40,55,65,.2);pointer-events:none}
+  .pellet:hover{transform:translateY(-3px);box-shadow:inset 2px 2px 0 rgba(255,255,255,.95),inset -3px -3px 0 rgba(40,55,65,.6),0 0 0 3px #0b6fa4,0 0 20px rgba(43,143,196,.5),0 9px 0 rgba(70,89,100,.45),0 14px 22px rgba(0,0,0,.4)}
+  .pellet:active{transform:translateY(3px);box-shadow:inset 3px 4px 6px rgba(40,55,65,.55),inset -2px -2px 0 rgba(255,255,255,.35),0 0 0 3px #0b6fa4,0 2px 0 rgba(70,89,100,.45),0 4px 8px rgba(0,0,0,.4)}
+  .pellet .p-ico{font-size:2rem;line-height:1;margin-bottom:.35rem;color:#1a2c36;text-shadow:0 1px 0 #fff}
+  .pellet .p-title{font-size:1rem;font-weight:700;color:#12242e;letter-spacing:.02em;text-shadow:0 1px 0 #fff}
+  .pellet .p-sub{font-size:.66rem;font-weight:600;color:#3f5563;margin-top:.2rem;text-shadow:0 1px 0 rgba(255,255,255,.85)}
+
+  .playlists-tray{margin-top:2.4rem;width:100%;max-width:720px}
+  .playlists-tray-title{font-size:.76rem;text-transform:uppercase;letter-spacing:.16em;color:#eaf6ff;font-weight:700;margin-bottom:.7rem;text-align:center;text-shadow:0 1px 3px #000}
+  .playlists-list{display:flex;flex-direction:column;gap:7px}
+  .playlists-empty{color:#eaf6ff;font-style:italic;font-weight:600;padding:.5rem .2rem;text-align:center;text-shadow:0 1px 3px #000}
+  .playlist-entry{display:flex;align-items:center;gap:.9rem;padding:.55rem .85rem;background:rgba(255,255,255,.92);border:1px solid #5f7484;box-shadow:inset 1px 1px 0 #fff,2px 2px 0 rgba(15,30,40,.35);transition:box-shadow .12s ease}
+  .playlist-entry:hover{box-shadow:inset 1px 1px 0 #fff,0 0 0 2px #0b6fa4,2px 2px 0 rgba(15,30,40,.35)}
+  .playlist-entry .pl-info{flex:1;min-width:0}
+  .playlist-entry .pl-name{font-weight:700;color:#12242e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .playlist-entry .pl-meta{font-size:.72rem;color:#3f5563;margin-top:3px}
+  .playlist-entry .pl-del{width:30px;height:30px;color:#7a1a10;font-family:var(--ng-font);font-weight:700;font-size:1rem;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;background:#f3d6d2;border:1px solid #a8564c;box-shadow:inset 1px 1px 0 rgba(255,255,255,.9),2px 2px 0 rgba(15,30,40,.3);transition:box-shadow .12s ease,filter .12s ease}
+  .playlist-entry .pl-del:hover{filter:brightness(1.05);box-shadow:inset 1px 1px 0 #fff,0 0 0 2px #0b6fa4,2px 2px 0 rgba(15,30,40,.3)}
+
+  /* shell */
+  .tv-guide{position:fixed;inset:0;z-index:5;display:flex;flex-direction:column;overflow:hidden;background:linear-gradient(180deg,#d7e2ea 0%,#b8c6d0 100%)}
+  .tv-guide.hidden{display:none!important}
+  .ch-topbar{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.7rem 1.4rem;flex-wrap:wrap;background:var(--sheen);border-bottom:2px solid #5f7484;box-shadow:inset 0 1px 0 #fff,inset 0 -2px 0 rgba(40,55,65,.45),0 4px 12px rgba(15,30,40,.3);z-index:10;min-height:64px}
+  .ch-topbar-left{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap}
+  .ch-topbar-title{font-size:1.05rem;font-weight:700;color:#12242e;letter-spacing:.03em;text-shadow:0 1px 0 #fff}
+
+  /* Player topbar: same box metrics as the main topbar so buttons don't overflow */
+  #playerTopbar{
+    flex-shrink:0;
+    padding:.7rem 1.4rem;
+    border-bottom:2px solid #5f7484;
+    box-shadow:inset 0 1px 0 #fff,inset 0 -2px 0 rgba(40,55,65,.45),0 4px 12px rgba(15,30,40,.3);
+    align-items:center;
+    min-height:64px;
+  }
+  #playerTopbar .nav-btn{box-shadow:inset 1px 1px 0 #fff,inset -1px -1px 0 rgba(40,55,65,.6),2px 2px 0 rgba(15,30,40,.4);}
+
+  .nav-btn{padding:.45rem 1.1rem;font-family:var(--ng-font);font-size:.86rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;color:#12242e;background:var(--sheen);border:1px solid #5f7484;box-shadow:inset 1px 1px 0 #fff,inset -1px -1px 0 rgba(40,55,65,.6),2px 2px 0 rgba(15,30,40,.4);text-shadow:0 1px 0 #fff;transition:box-shadow .12s ease,transform .08s ease,filter .12s ease}
+  .nav-btn:hover{filter:brightness(1.03);box-shadow:inset 1px 1px 0 #fff,inset -1px -1px 0 rgba(40,55,65,.6),0 0 0 2px #0b6fa4,0 0 12px rgba(43,143,196,.45),2px 2px 0 rgba(15,30,40,.4)}
+  .nav-btn:active{transform:translateY(1px);box-shadow:inset 2px 3px 5px rgba(40,55,65,.5),inset -1px -1px 0 rgba(255,255,255,.35),1px 1px 0 rgba(15,30,40,.4)}
+  .nav-btn.primary{color:#eaf6ff;text-shadow:0 1px 0 rgba(0,0,0,.5);background:linear-gradient(180deg,#7fc6ec 0%,#2b8fc4 55%,#124e70 100%);border:1px solid #0b3f5c;box-shadow:inset 1px 1px 0 rgba(255,255,255,.5),inset -1px -1px 0 rgba(0,0,0,.5),2px 2px 0 rgba(15,30,40,.4)}
+  .nav-btn.primary:hover{box-shadow:inset 1px 1px 0 rgba(255,255,255,.55),inset -1px -1px 0 rgba(0,0,0,.5),0 0 0 2px #0b6fa4,0 0 14px rgba(43,143,196,.6),2px 2px 0 rgba(15,30,40,.4)}
+  .nav-btn:disabled{opacity:.4;cursor:not-allowed;filter:grayscale(.6)}
+
+  .nav-btn.rec{color:#fff;text-shadow:0 1px 0 rgba(0,0,0,.55);background:linear-gradient(180deg,#e8655a 0%,#c0392b 60%,#8f2418 100%);border:1px solid #7a1a10;box-shadow:inset 1px 1px 0 rgba(255,255,255,.45),inset -1px -1px 0 rgba(0,0,0,.5),2px 2px 0 rgba(15,30,40,.4)}
+  .nav-btn.rec:hover{box-shadow:inset 1px 1px 0 rgba(255,255,255,.5),0 0 0 2px #0b6fa4,0 0 14px rgba(224,72,60,.6),2px 2px 0 rgba(15,30,40,.4)}
+  .nav-btn.rec.recording{animation:recPulse 1.2s ease-in-out infinite}
+  .nav-btn.rec.recorded{background:linear-gradient(180deg,#62d59a 0%,#2f9e6a 60%,#1d6b47 100%);border-color:#155238}
+
+  .status-badge{padding:.3rem .85rem;font-size:.76rem;font-weight:700;color:#2b4657;letter-spacing:.04em;background:#eef4f8;border:1px solid #7c90a0;box-shadow:inset 1px 1px 0 #fff,inset -1px -1px 0 rgba(40,55,65,.4)}
+  .status-badge.recording{background:#f8d0cb;color:#7a1a10;border-color:#a8564c;animation:recPulse 1.4s ease-in-out infinite}
+
+  .ch-body{flex:1;min-height:0;overflow-y:auto;padding:1.6rem 1.6rem 2.4rem}
+  .ch-body::-webkit-scrollbar{width:14px}
+  .ch-body::-webkit-scrollbar-thumb{background:#93a4b0;border:1px solid #5f7484}
+  .ch-body::-webkit-scrollbar-track{background:#c4d0d8;border-left:1px solid #8fa4b4}
+  .overview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:1rem;max-width:1500px;margin:0 auto}
+  .ov-card{position:relative;cursor:pointer;overflow:hidden;display:flex;flex-direction:column;background:#eef4f8;border:1px solid #5f7484;box-shadow:inset 1px 1px 0 #fff,2px 2px 0 rgba(15,30,40,.3);transition:box-shadow .12s ease,transform .12s ease}
+  .ov-card:hover{transform:translateY(-3px);box-shadow:inset 1px 1px 0 #fff,0 0 0 2px #0b6fa4,0 0 16px rgba(43,143,196,.45),2px 2px 0 rgba(15,30,40,.3)}
+  .ov-card:active{transform:translateY(0);box-shadow:inset 2px 3px 5px rgba(40,55,65,.35),0 0 0 2px #0b6fa4,1px 1px 0 rgba(15,30,40,.3)}
+  .ov-thumb{position:relative;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;overflow:hidden;background:radial-gradient(circle at 50% 40%,#eaf6ff 0%,#c4d0d8 95%);border-bottom:1px solid #5f7484;box-shadow:inset 0 1px 0 #fff}
+  .ov-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:12%;background:#fff}
+  .ov-thumb .ov-letter{font-size:2.6rem;font-weight:700;color:#2b8fc4;text-shadow:0 1px 0 #fff}
+  .ov-num{position:absolute;top:.45rem;left:.45rem;z-index:3;font-weight:700;font-size:.76rem;color:#eaf6ff;padding:.1rem .5rem;letter-spacing:.05em;text-shadow:0 1px 0 rgba(0,0,0,.5);background:linear-gradient(180deg,#7fc6ec 0%,#2b8fc4 55%,#124e70 100%);border:1px solid #0b3f5c;box-shadow:inset 1px 1px 0 rgba(255,255,255,.4),0 2px 3px rgba(0,0,0,.3)}
+  .ov-rec{position:absolute;top:.45rem;right:.45rem;z-index:3;font-weight:700;font-size:.7rem;color:#fff;padding:.1rem .45rem;letter-spacing:.05em;background:#c0392b;border:1px solid #7a1a10;box-shadow:inset 1px 1px 0 rgba(255,255,255,.35),0 2px 3px rgba(0,0,0,.3)}
+  .ov-rec.live{animation:recPulse 1.2s ease-in-out infinite}
+  .ov-rec.done{background:#2f9e6a;border-color:#155238}
+  .ov-play{position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;opacity:0;background:rgba(11,43,61,.35);transition:opacity .14s ease}
+  .ov-card:hover .ov-play{opacity:1}
+  .ov-play-circle{width:54px;height:54px;border-radius:50%!important;display:flex;align-items:center;justify-content:center;color:#12242e;font-size:1.4rem;background:#eef4f8;border:2px solid #5f7484;box-shadow:inset 1px 1px 0 #fff,2px 2px 0 rgba(0,0,0,.3)}
+  .ov-meta{padding:.65rem .8rem .8rem;min-width:0;display:flex;align-items:center;gap:.5rem}
+  .ov-meta-main{flex:1;min-width:0}
+  .ov-name{font-weight:700;font-size:.94rem;color:#12242e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 0 #fff}
+  .ov-group{font-size:.72rem;color:#3f5563;font-weight:600;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ov-rec-btn{flex-shrink:0;width:32px;height:32px;border-radius:50%!important;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-family:var(--ng-font);font-weight:700;font-size:.9rem;color:#fff;background:linear-gradient(180deg,#e8655a 0%,#c0392b 60%,#8f2418 100%);border:1px solid #7a1a10;box-shadow:inset 1px 1px 0 rgba(255,255,255,.45),inset -1px -1px 0 rgba(0,0,0,.4),2px 2px 0 rgba(15,30,40,.35);transition:box-shadow .12s ease,filter .12s ease,transform .1s ease}
+  .ov-rec-btn::before{content:"";width:10px;height:10px;border-radius:50%!important;background:#fff;box-shadow:0 0 6px rgba(255,255,255,.8)}
+  .ov-rec-btn:hover{filter:brightness(1.08);box-shadow:inset 1px 1px 0 rgba(255,255,255,.5),0 0 0 2px #0b6fa4,2px 2px 0 rgba(15,30,40,.35)}
+  .ov-rec-btn.recording{animation:recPulse 1.2s ease-in-out infinite}
+  .ov-rec-btn.recording::before{width:12px;height:12px;background:#fff;box-shadow:0 0 12px #fff}
+  .ov-rec-btn.recorded{background:linear-gradient(180deg,#62d59a 0%,#2f9e6a 60%,#1d6b47 100%);border-color:#155238}
+  .ov-rec-btn.recorded::before{content:"\2713";background:transparent;box-shadow:none;font-size:1rem;width:auto;height:auto}
+  .ov-rec-btn:disabled{opacity:.35;cursor:not-allowed;filter:grayscale(.5);animation:none}
+
+  .overview-empty{max-width:520px;margin:3rem auto;text-align:center;padding:2rem 1.4rem;color:#2b4657;font-weight:600;line-height:1.6;background:#eef4f8;border:1px solid #5f7484;box-shadow:inset 1px 1px 0 #fff,3px 3px 0 rgba(15,30,40,.3)}
+  .overview-empty .oe-title{font-size:1.1rem;font-weight:700;color:#12242e;margin-bottom:.4rem;text-shadow:0 1px 0 #fff}
+
+  /* DVR list */
+  .dvr-list{display:flex;flex-direction:column;gap:8px;max-width:1000px;margin:0 auto}
+  .dvr-row{display:flex;align-items:center;gap:1rem;padding:.8rem 1rem;background:#eef4f8;border:1px solid #5f7484;box-shadow:inset 1px 1px 0 #fff,2px 2px 0 rgba(15,30,40,.3);cursor:pointer;transition:box-shadow .12s ease,transform .12s ease}
+  .dvr-row:hover{transform:translateX(2px);box-shadow:inset 1px 1px 0 #fff,0 0 0 2px #0b6fa4,0 0 14px rgba(43,143,196,.4),2px 2px 0 rgba(15,30,40,.3)}
+  .dvr-thumb{width:64px;height:48px;flex-shrink:0;background:radial-gradient(circle at 50% 40%,#eaf6ff 0%,#c4d0d8 95%);border:1px solid #5f7484;display:flex;align-items:center;justify-content:center;font-weight:700;color:#2b8fc4;font-size:1.1rem;overflow:hidden;position:relative}
+  .dvr-thumb.recording{background:linear-gradient(180deg,#f8d0cb 0%,#c0392b 100%);color:#fff}
+  .dvr-thumb.recording::after{content:"";position:absolute;top:3px;right:3px;width:8px;height:8px;background:#ff2a1a;border-radius:50%!important;box-shadow:0 0 8px rgba(255,42,26,.9);animation:recPulse 1.2s ease-in-out infinite}
+  .dvr-thumb img{width:100%;height:100%;object-fit:contain;background:#fff;padding:4px}
+  .dvr-info{flex:1;min-width:0}
+  .dvr-name{font-weight:700;color:#12242e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 0 #fff}
+  .dvr-meta{font-size:.74rem;color:#3f5563;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .dvr-badge{font-size:.65rem;font-weight:700;letter-spacing:.06em;padding:.1rem .45rem;background:#dbe7ee;color:#2b4657;border:1px solid #7c90a0;box-shadow:inset 1px 1px 0 #fff}
+  .dvr-badge.live-rec{background:#f8d0cb;color:#7a1a10;border-color:#a8564c;animation:recPulse 1.4s ease-in-out infinite}
+  .dvr-badge.bookmark{background:#fbecc4;color:#6a4a10;border-color:#a8823c}
+  .dvr-del{width:34px;height:34px;flex-shrink:0;color:#fff;font-family:var(--ng-font);font-weight:700;font-size:1.15rem;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#e8655a 0%,#c0392b 60%,#8f2418 100%);border:1px solid #7a1a10;box-shadow:inset 1px 1px 0 rgba(255,255,255,.4),inset -1px -1px 0 rgba(0,0,0,.4),2px 2px 0 rgba(15,30,40,.35);transition:box-shadow .12s ease,filter .12s ease}
+  .dvr-del:hover{filter:brightness(1.08);box-shadow:inset 1px 1px 0 rgba(255,255,255,.5),0 0 0 2px #0b6fa4,2px 2px 0 rgba(15,30,40,.35)}
+
+  /* player overlay */
+  .player-view{position:absolute;inset:0;z-index:20;display:none;flex-direction:column;background:linear-gradient(180deg,#d7e2ea 0%,#b8c6d0 100%)}
+  .player-view.visible{display:flex;animation:fadeInOnly .25s ease both}
+  .player-inner{max-width:1100px;margin:0 auto;width:100%;padding:1.4rem 1.6rem 2rem;display:flex;flex-direction:column;flex:1;overflow-y:auto}
+  .player-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.9rem;flex-wrap:wrap}
+  .player-head h3{font-size:1.3rem;font-weight:700;color:#12242e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70%;text-shadow:0 1px 0 #fff}
+  .player-head .pg-group{font-size:.75rem;font-weight:700;color:#0b3a52;padding:.2rem .75rem;white-space:nowrap;background:#eef4f8;border:1px solid #7c90a0;box-shadow:inset 1px 1px 0 #fff,inset -1px -1px 0 rgba(40,55,65,.35)}
+  .player-head .pg-group.rec{background:#f8d0cb;color:#7a1a10;border-color:#a8564c;animation:recPulse 1.4s ease-in-out infinite}
+  .video-wrap{position:relative;background:#0b2b3d;aspect-ratio:16/9;overflow:hidden;border:3px solid #5f7484;box-shadow:inset 0 0 0 1px rgba(255,255,255,.2),6px 6px 0 rgba(15,30,40,.45)}
+  .video-wrap video{width:100%;height:100%;display:block;background:#000}
+  .video-wrap.can-fs{cursor:pointer}
+  .video-wrap.no-fs .fs-hotspot{display:none}
+  .fs-hotspot{position:absolute;inset:0;z-index:3;background:transparent;cursor:pointer}
+  .player-controls{display:flex;align-items:center;gap:.6rem;margin-top:1rem;flex-wrap:wrap}
+  .player-time{font-size:.78rem;font-weight:700;color:#2b4657;padding:0 .3rem;letter-spacing:.02em;font-variant-numeric:tabular-nums}
+  .player-time.rec-time{color:#a8251a}
+
+  .err-screen{position:absolute;inset:0;z-index:5;display:none;flex-direction:column;align-items:center;justify-content:center;gap:.7rem;text-align:center;padding:1.4rem;background:radial-gradient(circle at 50% 40%,#123a4f 0%,#081821 90%)}
+  .err-screen.visible{display:flex}
+  .err-icon{width:58px;height:58px;border-radius:50%!important;display:flex;align-items:center;justify-content:center;color:#3a0a06;font-size:1.9rem;font-weight:700;background:linear-gradient(180deg,#ffd7d2 0%,#e88a80 55%,#b3473b 100%);border:2px solid #7a1a10;box-shadow:inset 1px 1px 0 rgba(255,255,255,.7),2px 2px 0 rgba(0,0,0,.4)}
+  .err-title{font-size:1.15rem;font-weight:700;color:#eaf6ff;letter-spacing:.02em;text-shadow:0 1px 0 #000}
+  .err-chan{font-size:.82rem;font-weight:600;color:#9fcbe0;max-width:80%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .err-retry{margin-top:.5rem;padding:.45rem 1.2rem;font-family:var(--ng-font);font-size:.84rem;font-weight:700;cursor:pointer;color:#12242e;background:#eef4f8;border:1px solid #5f7484;box-shadow:inset 1px 1px 0 #fff,2px 2px 0 rgba(0,0,0,.4);text-shadow:0 1px 0 #fff}
+  .err-retry:hover{box-shadow:inset 1px 1px 0 #fff,0 0 0 2px #0b6fa4,2px 2px 0 rgba(0,0,0,.4)}
+
+  .fs-active .tv-guide,.fs-active .home-menu{display:none!important}
+  .fs-video-stage{position:fixed;inset:0;z-index:9997;background:#000;display:none;align-items:center;justify-content:center}
+  .fs-active .fs-video-stage{display:flex}
+  .fs-video-stage video{width:100%;height:100%;object-fit:contain;background:#000;display:block}
+  .fs-exit-btn{position:fixed;top:1.4rem;right:1.4rem;z-index:10050;display:none;align-items:center;gap:.4rem}
+  .fs-active .fs-exit-btn{display:inline-flex}
+  .fs-video-stage .err-screen{display:none}
+  .fs-video-stage .err-screen.visible{display:flex}
+</style>
+</head>
+<body>
+
+<div class="screensaver" id="screensaver">
+  <img class="screensaver-image" id="screensaverImage" src="" alt="">
+  <div class="screensaver-clock" id="screensaverClock">--:--<span class="ampm">--</span></div>
+  <div class="screensaver-bar" id="screensaverBar"><span class="screensaver-bar-text">press &ldquo;OK&rdquo; to watch tv.</span></div>
+</div>
+
+<div class="home-menu" id="homeMenu">
+  <div class="home-homeclock clock-badge" id="homeClock">--:--<span class="ampm">--</span></div>
+  <div class="home-content">
+    <div class="home-inner">
+      <div class="pellet-row">
+        <button class="pellet" data-view="guide" type="button">
+          <span class="p-ico">&#9654;</span>
+          <span class="p-title">Channels</span>
+          <span class="p-sub">Browse &amp; watch</span>
+        </button>
+        <button class="pellet" data-view="dvr" type="button">
+          <span class="p-ico">&#9679;</span>
+          <span class="p-title">DVR</span>
+          <span class="p-sub">Your recordings</span>
+        </button>
+      </div>
+      <div class="playlists-tray">
+        <div class="playlists-tray-title">Loaded Playlists</div>
+        <div class="playlists-list" id="playlistsList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="tv-guide hidden" id="tvGuide">
+  <div class="ch-topbar" id="mainTopbar">
+    <div class="ch-topbar-left">
+      <button class="nav-btn" id="backBtn" type="button">&#10094; Back</button>
+      <span class="ch-topbar-title" id="shellTitle">Channels</span>
+    </div>
+    <div class="ch-topbar-left" id="topbarActions">
+      <label class="nav-btn primary" for="fileInput">Upload M3U</label>
+      <input type="file" id="fileInput" accept=".m3u,.m3u8,text/plain" style="display:none;" multiple>
+      <div class="status-badge" id="statusBadge">idle</div>
+    </div>
+  </div>
+
+  <div class="ch-body" id="chBody">
+    <div class="overview-grid" id="overviewGrid"></div>
+    <div class="dvr-list" id="dvrList" style="display:none;"></div>
+  </div>
+
+  <div class="player-view" id="playerView">
+    <div class="ch-topbar" id="playerTopbar">
+      <div class="ch-topbar-left">
+        <button class="nav-btn" id="gcBackToList" type="button">&#10094; Back to list</button>
+        <span class="ch-topbar-title" id="nowPlayingTitle">—</span>
+        <div class="pg-group" id="nowPlayingGroup" style="display:none;"></div>
+      </div>
+      <div class="ch-topbar-left">
+        <button class="nav-btn rec" id="playerRecBtn" type="button" disabled>&#9679; REC</button>
+        <div class="status-badge" id="playerRecBadge" style="display:none;">● REC</div>
+      </div>
+    </div>
+    <div class="player-inner">
+      <div class="video-wrap no-fs" id="videoWrap">
+        <video id="videoPlayer" playsinline preload="metadata"></video>
+        <div class="fs-hotspot" id="fsHotspot"></div>
+        <div class="err-screen" id="errScreen">
+          <div class="err-icon">!</div>
+          <div class="err-title">Channel unavailable</div>
+          <div class="err-chan" id="errChan"></div>
+          <button class="err-retry" id="errRetry" type="button">Try again</button>
+        </div>
+      </div>
+      <div class="player-controls">
+        <button class="nav-btn" id="gcPlayPause" type="button" disabled>Play</button>
+        <button class="nav-btn" id="gcMute" type="button" disabled>Mute</button>
+        <span class="player-time" id="gcTime">--:-- / --:--</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="fs-video-stage" id="fsStage">
+  <video id="fsVideo" controls playsinline preload="metadata"></video>
+  <div class="err-screen" id="fsErrScreen">
+    <div class="err-icon">!</div>
+    <div class="err-title">Channel unavailable</div>
+    <div class="err-chan" id="fsErrChan"></div>
+  </div>
+</div>
+<button class="nav-btn primary fs-exit-btn" id="fsExitBtn" type="button">Exit Fullscreen</button>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const overviewGrid=$('overviewGrid'),dvrList=$('dvrList'),chBody=$('chBody');
+  const playerView=$('playerView'),videoWrap=$('videoWrap'),videoPlayer=$('videoPlayer');
+  const nowPlayingT=$('nowPlayingTitle'),nowPlayingG=$('nowPlayingGroup');
+  const errScreen=$('errScreen'),errChan=$('errChan'),errRetry=$('errRetry');
+  const statusBadge=$('statusBadge'),fileInput=$('fileInput');
+  const homeMenu=$('homeMenu'),backBtn=$('backBtn'),fsHotspot=$('fsHotspot');
+  const playlistsList=$('playlistsList');const shellTitle=$('shellTitle');
+  const gcPlayPause=$('gcPlayPause'),gcMute=$('gcMute'),gcBackToList=$('gcBackToList'),gcTime=$('gcTime');
+  const tvGuide=$('tvGuide');
+  const fsVideo=$('fsVideo'),fsErrScreen=$('fsErrScreen'),fsErrChan=$('fsErrChan'),fsExitBtn=$('fsExitBtn');
+  const playerRecBtn=$('playerRecBtn'),playerRecBadge=$('playerRecBadge');
+
+  let channels=[],activeIdx=-1,currentPlaying=null;
+  let hls=null,fsHls=null;
+  let fullscreenActive=false;
+  let playlists=[],dvr=[];
+  let currentChannelCanFs=false;
+  let mode='channels';
+  let currentList=[];
+
+  // ---- Active recording state ----
+  let activeRecorder=null;
+  let activeRecId=null;
+  let activeRecChunks=[];
+  let activeRecStartedAt=0;
+  let activeRecTimerInt=null;
+  let activeRecUrl=null;
+
+  function zoomIn(el){if(!el)return;el.classList.remove('menu-zooming-in');void el.offsetWidth;el.classList.add('menu-zooming-in');const cb=()=>{el.classList.remove('menu-zooming-in');el.removeEventListener('animationend',cb);};el.addEventListener('animationend',cb,{once:true});}
+
+  let audioCtx=null;
+  function getAudioCtx(){if(!audioCtx){try{audioCtx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){return null;}}if(audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});return audioCtx;}
+  function blip({freq=660,dur=0.06,type='square',vol=0.05,slideTo=null}={}){const ctx=getAudioCtx();if(!ctx)return;const t0=ctx.currentTime,osc=ctx.createOscillator(),g=ctx.createGain();osc.type=type;osc.frequency.setValueAtTime(freq,t0);if(slideTo)osc.frequency.exponentialRampToValueAtTime(slideTo,t0+dur);g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(vol,t0+0.006);g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);osc.connect(g);g.connect(ctx.destination);osc.start(t0);osc.stop(t0+dur+0.02);}
+  const sndHover=()=>blip({freq:520,dur:0.03,type:'sine',vol:0.025});
+  const sndSelect=()=>blip({freq:700,dur:0.05,type:'triangle',vol:0.05});
+  const sndOpen=()=>blip({freq:440,dur:0.09,type:'triangle',vol:0.06,slideTo:880});
+  const sndBack=()=>blip({freq:660,dur:0.08,type:'triangle',vol:0.055,slideTo:330});
+  const sndToggle=()=>blip({freq:820,dur:0.04,type:'square',vol:0.04});
+  const sndFsIn=()=>blip({freq:500,dur:0.12,type:'triangle',vol:0.06,slideTo:1000});
+  const sndFsOut=()=>blip({freq:900,dur:0.1,type:'triangle',vol:0.055,slideTo:450});
+  const sndErr=()=>blip({freq:300,dur:0.18,type:'sawtooth',vol:0.05,slideTo:180});
+  const sndRecord=()=>blip({freq:600,dur:0.1,type:'triangle',vol:0.06,slideTo:1200});
+  const sndStopRec=()=>blip({freq:1200,dur:0.12,type:'triangle',vol:0.055,slideTo:400});
+  const sndDelete=()=>blip({freq:400,dur:0.1,type:'sawtooth',vol:0.05,slideTo:200});
+  ['click','keydown','touchstart'].forEach(ev=>window.addEventListener(ev,()=>{getAudioCtx();},{once:true,passive:true}));
+
+  const homeClock=$('homeClock'),screensaverClock=$('screensaverClock');
+  function fmt12(){const d=new Date();let h=d.getHours();const m=d.getMinutes().toString().padStart(2,'0');const ap=h>=12?'PM':'AM';h=h%12;if(h===0)h=12;return{time:`${h}:${m}`,ampm:ap};}
+  function paintClock(el){if(!el)return;const{time,ampm}=fmt12();el.innerHTML=`${time}<span class="ampm">${ampm}</span>`;}
+  function tickClocks(){paintClock(homeClock);paintClock(screensaverClock);if(isRecordingNow())updateRecUI();}
+  tickClocks();setInterval(tickClocks,1000);
+
+  const LS_PLAYLISTS='novigrid.playlists.v1',LS_DVR='novigrid.dvr.v1';
+  const SIZE_THRESHOLD=5*1024*1024,IDB_NAME='novigrid',IDB_VERSION=2,IDB_STORE='kv',IDB_DVR_STORE='dvr';
+
+  function byteSize(s){return new Blob([s]).size;}
+  let idbPromise=null;
+  function openIDB(){if(idbPromise)return idbPromise;idbPromise=new Promise((res,rej)=>{const req=indexedDB.open(IDB_NAME,IDB_VERSION);req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(IDB_STORE))db.createObjectStore(IDB_STORE);if(!db.objectStoreNames.contains(IDB_DVR_STORE))db.createObjectStore(IDB_DVR_STORE);};req.onsuccess=()=>res(req.result);req.onerror=()=>rej(req.error);});return idbPromise;}
+  async function idbGet(k){const db=await openIDB();return new Promise((res,rej)=>{const tx=db.transaction(IDB_STORE,'readonly');const req=tx.objectStore(IDB_STORE).get(k);req.onsuccess=()=>res(req.result);req.onerror=()=>rej(req.error);});}
+  async function idbSet(k,v){const db=await openIDB();return new Promise((res,rej)=>{const tx=db.transaction(IDB_STORE,'readwrite');const req=tx.objectStore(IDB_STORE).put(v,k);req.onsuccess=()=>res();req.onerror=()=>rej(req.error);});}
+  async function idbDel(k){const db=await openIDB();return new Promise((res,rej)=>{const tx=db.transaction(IDB_STORE,'readwrite');const req=tx.objectStore(IDB_STORE).delete(k);req.onsuccess=()=>res();req.onerror=()=>rej(req.error);});}
+
+  // ---- DVR blob store ----
+  async function dvrBlobPut(id,blob){const db=await openIDB();return new Promise((res,rej)=>{const tx=db.transaction(IDB_DVR_STORE,'readwrite');const req=tx.objectStore(IDB_DVR_STORE).put(blob,id);req.onsuccess=()=>res();req.onerror=()=>rej(req.error);});}
+  async function dvrBlobGet(id){const db=await openIDB();return new Promise((res,rej)=>{const tx=db.transaction(IDB_DVR_STORE,'readonly');const req=tx.objectStore(IDB_DVR_STORE).get(id);req.onsuccess=()=>res(req.result);req.onerror=()=>rej(req.error);});}
+  async function dvrBlobDel(id){const db=await openIDB();return new Promise((res,rej)=>{const tx=db.transaction(IDB_DVR_STORE,'readwrite');const req=tx.objectStore(IDB_DVR_STORE).delete(id);req.onsuccess=()=>res();req.onerror=()=>rej(req.error);});}
+
+  async function savePlaylists(){const j=JSON.stringify(playlists);if(byteSize(j)<SIZE_THRESHOLD){try{localStorage.setItem(LS_PLAYLISTS,j);try{await idbDel('playlists');}catch(e){}return;}catch(e){}}await idbSet('playlists',playlists);try{localStorage.removeItem(LS_PLAYLISTS);}catch(e){}}
+  async function loadPlaylists(){try{const raw=localStorage.getItem(LS_PLAYLISTS);if(raw){const p=JSON.parse(raw);if(Array.isArray(p)){playlists=p;return;}}}catch(e){}try{const f=await idbGet('playlists');if(Array.isArray(f))playlists=f;}catch(e){}}
+
+  function saveDvr(){try{localStorage.setItem(LS_DVR,JSON.stringify(dvr));}catch(e){}
+    const j=JSON.stringify(dvr);if(byteSize(j)>=SIZE_THRESHOLD){idbSet('dvr',dvr).catch(()=>{});}}
+  function loadDvr(){try{const raw=localStorage.getItem(LS_DVR);if(raw){const p=JSON.parse(raw);if(Array.isArray(p)){dvr=p;return;}}}catch(e){}idbGet('dvr').then(f=>{if(Array.isArray(f))dvr=f;renderDvr();}).catch(()=>{});}
+
+  const isImageChannel=ch=>!!(ch&&ch.image);
+  function setFsAvail(y){currentChannelCanFs=!!y;videoWrap.classList.toggle('can-fs',currentChannelCanFs);videoWrap.classList.toggle('no-fs',!currentChannelCanFs);}
+
+  // ---- DVR helpers ----
+  function isRecordingNow(){return !!(activeRecorder&&activeRecorder.state==='recording');}
+  function isRecordingUrl(url){return dvr.some(r=>r.url===url&&r.status==='recording');}
+  function isRecorded(ch){if(!ch||!ch.url)return false;return dvr.some(r=>r.url===ch.url&&r.status==='done');}
+  function fmtBytes(n){if(!n)return'0 B';const u=['B','KB','MB','GB'];let i=0;let v=n;while(v>=1024&&i<u.length-1){v/=1024;i++;}return v.toFixed(v<10&&i>0?1:0)+' '+u[i];}
+  function formatClock(sec){if(!sec||isNaN(sec)||sec<0)return'--:--';const m=Math.floor(sec/60);const s=Math.floor(sec%60).toString().padStart(2,'0');return`${m}:${s}`;}
+
+  async function startRecording(ch){
+    if(!ch||!ch.url){sndErr();return;}
+    if(isRecordingUrl(ch.url)){sndSelect();return;}
+    // Must be tuned in
+    if(!currentPlaying||currentPlaying.url!==ch.url){
+      // find in current list / channels and tune
+      let idx=channels.indexOf(ch);
+      if(idx>=0)openPlayer(idx,channels);
+    }
+    const capture=(videoPlayer.captureStream||videoPlayer.mozCaptureStream);
+    if(!capture){alert('This browser does not support in-browser recording.');return;}
+    let stream;
+    try{stream=capture.call(videoPlayer);}catch(e){alert('Could not capture stream (CORS/DRM may block it).');return;}
+    if(!stream||!stream.getVideoTracks().length){alert('No video track to record (stream may be DRM/CORS-protected).');return;}
+    const mimes=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm','video/mp4;codecs=avc1,mp4a.40.2','video/mp4'];
+    const mime=mimes.find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported(m))||'';
+    if(!mime){alert('No supported recording format in this browser.');return;}
+
+    activeRecId='dvr-'+Date.now()+'-'+Math.floor(Math.random()*1e6);
+    activeRecUrl=ch.url;
+    activeRecChunks=[];
+    activeRecStartedAt=Date.now();
+    const entry={
+      id:activeRecId,
+      name:ch.name||'Channel',
+      group:ch.group||'',
+      url:ch.url,
+      logo:ch.logo||'',
+      image:ch.image||'',
+      number:ch.number,
+      recordedAt:new Date().toLocaleString(),
+      status:'recording',
+      mime,
+      duration:0,
+      size:0,
+    };
+    dvr.push(entry);
+    saveDvr();
+    renderDvr();renderOverview();updateRecUI();
+
+    try{activeRecorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:2500000});}
+    catch(e){
+      dvr=dvr.filter(r=>r.id!==activeRecId);
+      activeRecId=null;activeRecUrl=null;
+      saveDvr();renderDvr();renderOverview();updateRecUI();
+      alert('MediaRecorder could not start.');return;
+    }
+    const recId=activeRecId;
+    activeRecorder.ondataavailable=(ev)=>{if(ev.data&&ev.data.size)activeRecChunks.push(ev.data);};
+    activeRecorder.onstop=async()=>{
+      const blob=new Blob(activeRecChunks,{type:mime});
+      const seconds=Math.round((Date.now()-activeRecStartedAt)/1000);
+      activeRecorder=null;activeRecId=null;activeRecUrl=null;activeRecChunks=[];activeRecStartedAt=0;
+      clearInterval(activeRecTimerInt);activeRecTimerInt=null;
+      const e=dvr.find(r=>r.id===recId);
+      if(blob.size===0){
+        dvr=dvr.filter(r=>r.id!==recId);
+        saveDvr();renderDvr();renderOverview();updateRecUI();
+        return;
+      }
+      if(e){e.status='done';e.duration=seconds;e.size=blob.size;e.mime=blob.type||mime;}
+      try{await dvrBlobPut(recId,blob);}catch(err){}
+      saveDvr();renderDvr();renderOverview();updateRecUI();
+    };
+    activeRecorder.start(2000);
+    clearInterval(activeRecTimerInt);
+    activeRecTimerInt=setInterval(()=>{if(mode==='dvr')renderDvr();updateRecUI();},1000);
+    sndRecord();
+    renderDvr();renderOverview();updateRecUI();
+  }
+
+  function stopRecording(){
+    if(activeRecorder&&activeRecorder.state!=='inactive'){
+      try{activeRecorder.stop();}catch(e){}
+    }
+    sndStopRec();
+  }
+
+  async function togglePlayerRecording(){
+    if(activeIdx<0)return;
+    const ch=currentList[activeIdx];
+    if(!ch||!ch.url)return;
+    if(isRecordingNow()&&activeRecUrl===ch.url){stopRecording();return;}
+    // If a different recording is active, stop it first
+    if(isRecordingNow()){stopRecording();return;}
+    await startRecording(ch);
+  }
+
+  async function deleteRecording(id){
+    const rec=dvr.find(r=>r.id===id);
+    if(rec&&rec.status==='recording'&&rec.id===activeRecId)stopRecording();
+    dvr=dvr.filter(d=>d.id!==id);
+    saveDvr();
+    try{await dvrBlobDel(id);}catch(e){}
+    sndDelete();
+    renderDvr();renderOverview();
+  }
+
+  function updateRecUI(){
+    const ch=currentList[activeIdx]||null;
+    const recNow=isRecordingNow()&&ch&&activeRecUrl===ch.url;
+    const hasRec=isRecorded(ch);
+    if(playerRecBtn){
+      playerRecBtn.disabled=!(ch&&ch.url);
+      playerRecBtn.classList.toggle('recording',!!recNow);
+      playerRecBtn.classList.toggle('recorded',!recNow&&hasRec);
+      playerRecBtn.innerHTML=recNow?'&#9632; STOP':(hasRec?'&#10003; REC':'&#9679; REC');
+    }
+    if(playerRecBadge){
+      playerRecBadge.style.display=recNow?'inline-flex':'none';
+    }
+    if(nowPlayingG){
+      nowPlayingG.classList.toggle('rec',!!recNow);
+    }
+    if(statusBadge){
+      if(isRecordingNow()){statusBadge.classList.add('recording');statusBadge.textContent='● REC';}
+      else{statusBadge.classList.remove('recording');statusBadge.textContent=channels.length?'ready':'empty';}
+    }
+    if(gcTime){
+      if(recNow){gcTime.classList.add('rec-time');gcTime.textContent='● '+formatClock(Math.round((Date.now()-activeRecStartedAt)/1000));}
+      else{gcTime.classList.remove('rec-time');const d=videoPlayer.duration,c=videoPlayer.currentTime;if(d&&isFinite(d))gcTime.textContent=`${formatClock(c)} / ${formatClock(d)}`;else gcTime.textContent=`${formatClock(c)} / --:--`;}
+    }
+  }
+
+  const screensaver=$('screensaver'),screensaverImage=$('screensaverImage'),screensaverBar=$('screensaverBar');
+  const SCREENSAVER_IMAGES=['autumn.jpeg','beach.jpeg','forest.jpeg','night.jpeg'];
+  const SCREENSAVER_INTERVAL=30000,IDLE_RETURN=3*60*60*1000,BANNER_MOVE_INTERVAL=20000;
+  let screensaverActive=false,slideTimer=null,idleTimer=null,lastImage='',bannerTimer=null;
+  function moveBanner(){const bar=screensaverBar;if(!bar)return;const bw=bar.offsetWidth,bh=bar.offsetHeight;const maxL=Math.max(0,window.innerWidth-bw-16),maxT=Math.max(0,window.innerHeight-bh-16);bar.style.left=(Math.floor(Math.random()*(maxL+1))+8)+'px';bar.style.top=(Math.floor(Math.random()*(maxT+1))+8)+'px';}
+  function centerBanner(){const bar=screensaverBar;if(!bar)return;const bw=bar.offsetWidth,bh=bar.offsetHeight;bar.style.left=Math.floor((window.innerWidth-bw)/2)+'px';bar.style.top=Math.floor((window.innerHeight-bh)/2)+'px';}
+  function startBannerMotion(){centerBanner();setTimeout(()=>{if(screensaverActive)moveBanner();},50);clearInterval(bannerTimer);bannerTimer=setInterval(()=>{if(screensaverActive)moveBanner();},BANNER_MOVE_INTERVAL);}
+  function stopBannerMotion(){clearInterval(bannerTimer);bannerTimer=null;}
+  function pickRandomImage(){if(!SCREENSAVER_IMAGES.length)return'';let c=SCREENSAVER_IMAGES[Math.floor(Math.random()*SCREENSAVER_IMAGES.length)];if(SCREENSAVER_IMAGES.length>1){let g=0;while(c===lastImage&&g++<20)c=SCREENSAVER_IMAGES[Math.floor(Math.random()*SCREENSAVER_IMAGES.length)];}lastImage=c;return c;}
+  function advanceSlide(){screensaverImage.src=encodeURI(pickRandomImage());}
+  function startScreensaver(){if(screensaverActive)return;screensaverActive=true;screensaver.classList.remove('hidden');advanceSlide();startBannerMotion();slideTimer=setInterval(advanceSlide,SCREENSAVER_INTERVAL);}
+  function stopScreensaver(){if(!screensaverActive)return;screensaverActive=false;screensaver.classList.add('hidden');clearInterval(slideTimer);slideTimer=null;stopBannerMotion();armIdle();}
+  function armIdle(){clearTimeout(idleTimer);idleTimer=setTimeout(startScreensaver,IDLE_RETURN);}
+  ['mousemove','mousedown','keydown','touchstart','scroll','wheel'].forEach(evt=>window.addEventListener(evt,()=>{if(!screensaverActive)armIdle();},{passive:true}));
+  window.addEventListener('resize',()=>{if(screensaverActive){const bar=screensaverBar;const l=parseFloat(bar.style.left)||0;const t=parseFloat(bar.style.top)||0;const maxL=Math.max(0,window.innerWidth-bar.offsetWidth-8),maxT=Math.max(0,window.innerHeight-bar.offsetHeight-8);bar.style.left=Math.min(l,maxL)+'px';bar.style.top=Math.min(t,maxT)+'px';}});
+
+  function renderPlaylistsTray(){
+    if(!playlists.length){playlistsList.innerHTML='<div class="playlists-empty">No playlists loaded yet.</div>';return;}
+    playlistsList.innerHTML=playlists.map(p=>`<div class="playlist-entry" data-id="${esc(p.id)}"><div class="pl-info"><div class="pl-name">${esc(p.name)}</div><div class="pl-meta">added ${esc(p.loadedAt)}</div></div><button class="pl-del" type="button" data-del="${esc(p.id)}" title="Remove playlist">&times;</button></div>`).join('');
+    playlistsList.querySelectorAll('.pl-del').forEach(b=>{b.addEventListener('mouseenter',sndHover);b.addEventListener('click',e=>{e.stopPropagation();sndSelect();removePlaylist(b.dataset.del);});});
+  }
+  function openHomeMenu(){showOverview();tvGuide.classList.add('hidden');homeMenu.classList.add('visible');renderPlaylistsTray();zoomIn(homeMenu);}
+  function closeHomeMenu(){homeMenu.classList.remove('visible');}
+  function openChannelsView(){closeHomeMenu();tvGuide.classList.remove('hidden');mode='channels';shellTitle.textContent='Channels';overviewGrid.style.display='';dvrList.style.display='none';renderOverview();zoomIn(tvGuide);}
+  function openDvrView(){closeHomeMenu();tvGuide.classList.remove('hidden');mode='dvr';shellTitle.textContent='DVR';overviewGrid.style.display='none';dvrList.style.display='';showDvrList();zoomIn(tvGuide);}
+  backBtn.addEventListener('click',()=>{sndBack();openHomeMenu();});
+  homeMenu.querySelectorAll('.pellet').forEach(btn=>{
+    btn.addEventListener('mouseenter',sndHover);
+    btn.addEventListener('click',()=>{sndOpen();if(btn.dataset.view==='dvr')openDvrView();else openChannelsView();});
+  });
+  window.addEventListener('keydown',e=>{
+    if(e.code==='Space'||e.key===' '){
+      const tag=(document.activeElement&&document.activeElement.tagName)||'';
+      if(tag==='INPUT'||tag==='TEXTAREA')return;
+      if(screensaverActive){e.preventDefault();stopScreensaver();sndOpen();openHomeMenu();}
+      else if(activeIdx>=0&&playerView.classList.contains('visible')){e.preventDefault();togglePlayPause();}
+    }
+    if(e.key==='Enter'&&screensaverActive){e.preventDefault();stopScreensaver();sndOpen();openHomeMenu();}
+  });
+  startScreensaver();
+
+  function updateGuideControlsEnabled(){const ready=activeIdx>=0;gcPlayPause.disabled=!ready;gcMute.disabled=!ready;}
+  function updateGuideControlsUI(){gcPlayPause.textContent=videoPlayer.paused?'Play':'Pause';gcMute.textContent=videoPlayer.muted?'Unmute':'Mute';updateRecUI();}
+  async function togglePlayPause(){if(activeIdx<0)return;sndToggle();try{if(videoPlayer.paused)await videoPlayer.play();else videoPlayer.pause();}catch(e){}updateGuideControlsUI();}
+  async function toggleMute(){if(activeIdx<0)return;sndToggle();videoPlayer.muted=!videoPlayer.muted;updateGuideControlsUI();}
+  gcPlayPause.addEventListener('click',togglePlayPause);
+  gcMute.addEventListener('click',toggleMute);
+  gcBackToList.addEventListener('click',()=>{sndBack();if(mode==='dvr')showDvrList();else showOverview();});
+  videoPlayer.addEventListener('play',updateGuideControlsUI);
+  videoPlayer.addEventListener('pause',updateGuideControlsUI);
+  videoPlayer.addEventListener('volumechange',updateGuideControlsUI);
+  videoPlayer.addEventListener('timeupdate',()=>{if(isRecordingNow())updateRecUI();else if(activeIdx>=0){const d=videoPlayer.duration,c=videoPlayer.currentTime;if(d&&isFinite(d))gcTime.textContent=`${formatClock(c)} / ${formatClock(d)}`;}});
+  videoPlayer.addEventListener('durationchange',updateGuideControlsUI);
+  videoPlayer.addEventListener('loadedmetadata',updateGuideControlsUI);
+
+  playerRecBtn.addEventListener('click',()=>{togglePlayerRecording();});
+
+  function showError(chanName){errChan.textContent=chanName||'';errScreen.classList.add('visible');errRetry.onclick=()=>{sndSelect();if(activeIdx>=0)startPlayback(currentList[activeIdx]);};}
+  function hideError(){errScreen.classList.remove('visible');}
+
+  function destroyHls(){if(hls){hls.destroy();hls=null;}}
+  function stopInlineVideo(){try{videoPlayer.pause();}catch(e){}videoPlayer.removeAttribute('src');videoPlayer.load();}
+
+  function startPlayback(ch,opts){
+    opts=opts||{};
+    currentPlaying=ch;hideError();destroyHls();stopInlineVideo();
+    nowPlayingT.textContent=ch.name||'Channel';
+    if(ch.group){nowPlayingG.textContent=ch.group;nowPlayingG.style.display='inline-block';}else{nowPlayingG.style.display='none';}
+    nowPlayingG.classList.remove('rec');
+    setFsAvail(false);
+    updateRecUI();
+    if(opts.blobUrl){
+      videoPlayer.src=opts.blobUrl;
+      videoPlayer.controls=false;
+      videoPlayer.addEventListener('loadeddata',()=>{try{videoPlayer.play();}catch(e){}},{once:true});
+      updateGuideControlsUI();
+      return;
+    }
+    if(isImageChannel(ch)){showError(ch.name);sndErr();return;}
+    if(!ch.url){showError(ch.name);sndErr();return;}
+    setFsAvail(true);
+    if(videoPlayer.canPlayType('application/vnd.apple.mpegurl')){
+      videoPlayer.src=ch.url;
+      videoPlayer.play().catch(e=>{if(e.name==='AbortError')return;setFsAvail(false);showError(ch.name);sndErr();});
+      videoPlayer.addEventListener('error',()=>{setFsAvail(false);showError(ch.name);sndErr();},{once:true});
+    }else if(typeof Hls!=='undefined'&&Hls.isSupported()){
+      hls=new Hls({enableWorker:true});hls.loadSource(ch.url);hls.attachMedia(videoPlayer);
+      hls.on(Hls.Events.MANIFEST_PARSED,()=>videoPlayer.play().catch(()=>{}));
+      hls.on(Hls.Events.ERROR,(_,d)=>{if(!d.fatal)return;if(d.type===Hls.ErrorTypes.MEDIA_ERROR){hls.recoverMediaError();return;}setFsAvail(false);destroyHls();showError(ch.name);sndErr();});
+    }else{
+      videoPlayer.src=ch.url;
+      videoPlayer.play().catch(e=>{if(e.name==='AbortError')return;setFsAvail(false);showError(ch.name);sndErr();});
+      videoPlayer.addEventListener('error',()=>{setFsAvail(false);showError(ch.name);sndErr();},{once:true});
+    }
+  }
+
+  function openPlayer(idx,list){if(idx<0||idx>=list.length)return;sndSelect();currentList=list;activeIdx=idx;updateGuideControlsEnabled();chBody.scrollTop=0;playerView.classList.add('visible');startPlayback(list[idx]);updateGuideControlsUI();}
+  function playChannel(i){openPlayer(i,channels);}
+  function showOverview(){playerView.classList.remove('visible');hideError();stopInlineVideo();destroyHls();overviewGrid.style.display='';dvrList.style.display='none';}
+  function showDvrList(){playerView.classList.remove('visible');hideError();stopInlineVideo();destroyHls();overviewGrid.style.display='none';dvrList.style.display='';renderDvr();}
+
+  function overviewCardHtml(ch,i){
+    const initial=esc((ch.name||'?').charAt(0).toUpperCase());
+    let thumb;if(ch.logo&&/^(https?:|data:|\/\/)/.test(ch.logo))thumb=`<img src="${esc(ch.logo)}" loading="lazy" onerror="this.replaceWith('${initial}')">`;else thumb=`<span class="ov-letter">${initial}</span>`;
+    const group=ch.group?`<div class="ov-group">${esc(ch.group)}</div>`:'';
+    const isRecNow=isRecordingNow()&&currentPlaying&&ch.url&&currentPlaying.url===ch.url;
+    const isRecDone=isRecorded(ch);
+    let recBadge='';
+    if(isRecNow)recBadge='<div class="ov-rec live">● REC</div>';
+    else if(isRecDone)recBadge='<div class="ov-rec done">DVR</div>';
+    const recBtnCls=isRecNow?' recording':(isRecDone?' recorded':'');
+    const recBtnTitle=isRecNow?'Stop recording':(isRecDone?'Record again':'Record to DVR');
+    const recBtn=`<button class="ov-rec-btn${recBtnCls}" type="button" data-rec="${i}" title="${recBtnTitle}" aria-label="${recBtnTitle}"></button>`;
+    return `<div class="ov-card" data-i="${i}"><div class="ov-thumb"><div class="ov-num">${esc(ch.number)}</div>${recBadge}${thumb}<div class="ov-play"><div class="ov-play-circle">&#9654;</div></div></div><div class="ov-meta"><div class="ov-meta-main"><div class="ov-name">${esc(ch.name)}</div>${group}</div>${ch.url?recBtn:''}</div></div>`;
+  }
+  function renderOverview(){
+    if(!channels.length){overviewGrid.innerHTML='<div class="overview-empty"><div class="oe-title">No channels yet</div>Upload an M3U file to load your channels, then pick one to start watching.</div>';statusBadge.textContent='empty';return;}
+    overviewGrid.innerHTML=channels.map((ch,i)=>overviewCardHtml(ch,i)).join('');
+    overviewGrid.querySelectorAll('.ov-card').forEach(card=>{
+      const idx=+card.dataset.i;
+      card.addEventListener('mouseenter',sndHover);
+      card.addEventListener('click',e=>{
+        if(e.target.closest('.ov-rec-btn'))return;
+        playChannel(idx);
+      });
+      const rb=card.querySelector('.ov-rec-btn');
+      if(rb)rb.addEventListener('click',async e=>{
+        e.stopPropagation();
+        const ch=channels[idx];
+        if(!ch||!ch.url){sndErr();return;}
+        const recNow=isRecordingNow()&&activeRecUrl===ch.url;
+        if(recNow){stopRecording();return;}
+        if(isRecordingNow())stopRecording();
+        // If not currently tuned, tune it first
+        if(!currentPlaying||currentPlaying.url!==ch.url){openPlayer(idx,channels);}
+        await startRecording(ch);
+      });
+    });
+    statusBadge.textContent='ready';
+  }
+
+  function renderDvr(){
+    if(mode!=='dvr')return;
+    if(!dvr.length){dvrList.innerHTML='<div class="overview-empty"><div class="oe-title">No recordings yet</div>Open Channels and press the red ● REC button on a channel to record it.</div>';return;}
+    dvrList.innerHTML=dvr.map((d,i)=>{
+      const initial=esc((d.name||'?').charAt(0).toUpperCase());
+      const isRec=d.status==='recording';
+      const isLegacy=!d.status;
+      let thumb;if(d.logo&&/^(https?:|data:|\/\/)/.test(d.logo))thumb=`<img src="${esc(d.logo)}" loading="lazy" onerror="this.replaceWith('${initial}')">`;else thumb=initial;
+      const badge=isRec?`<span class="dvr-badge live-rec">● REC ${formatClock(Math.round((Date.now()-activeRecStartedAt)/1000))}</span>`:(isLegacy?`<span class="dvr-badge bookmark">Bookmark</span>`:`<span class="dvr-badge">${formatClock(d.duration||0)} &middot; ${fmtBytes(d.size||0)}</span>`);
+      return `<div class="dvr-row" data-i="${i}"><div class="dvr-thumb${isRec?' recording':''}">${thumb}</div><div class="dvr-info"><div class="dvr-name">${esc(d.name)}</div><div class="dvr-meta">${esc(d.group||'—')} &middot; ${isRec?'recording now':('saved '+esc(d.recordedAt))} ${badge}</div></div><button class="dvr-del" type="button" data-del="${esc(d.id)}" title="${isRec?'Stop &amp; delete':'Delete recording'}">&times;</button></div>`;
+    }).join('');
+    dvrList.querySelectorAll('.dvr-row').forEach(row=>{
+      row.addEventListener('mouseenter',sndHover);
+      row.addEventListener('click',async e=>{
+        if(e.target.closest('.dvr-del'))return;
+        const rec=dvr[+row.dataset.i];
+        if(!rec)return;
+        if(rec.status==='recording'){sndErr();return;}
+        sndSelect();
+        // Try blob playback first
+        const blob=await dvrBlobGet(rec.id);
+        if(blob){
+          closeHomeMenu();
+          tvGuide.classList.remove('hidden');
+          mode='dvr';shellTitle.textContent='DVR';overviewGrid.style.display='none';dvrList.style.display='';
+          // open player with a synthetic single-entry list
+          const blobUrl=URL.createObjectURL(blob);
+          const synthetic={name:rec.name,group:rec.group||'DVR',url:null,image:null,logo:rec.logo,number:rec.number};
+          currentList=[synthetic];activeIdx=0;
+          playerView.classList.add('visible');
+          startPlayback(synthetic,{blobUrl});
+          videoPlayer.addEventListener('loadeddata',()=>{URL.revokeObjectURL(blobUrl);},{once:true});
+          updateGuideControlsEnabled();updateGuideControlsUI();
+          return;
+        }
+        // Legacy bookmark fallback — re-tune live
+        if(rec.url){
+          const synthetic={name:rec.name,group:rec.group||'DVR',url:rec.url,image:rec.image||null,logo:rec.logo,number:rec.number};
+          currentList=[synthetic];activeIdx=0;
+          playerView.classList.add('visible');
+          startPlayback(synthetic);
+          updateGuideControlsEnabled();updateGuideControlsUI();
+        }else{
+          sndErr();
+        }
+      });
+    });
+    dvrList.querySelectorAll('.dvr-del').forEach(b=>{
+      b.addEventListener('mouseenter',sndHover);
+      b.addEventListener('click',e=>{e.stopPropagation();deleteRecording(b.dataset.del);});
+    });
+  }
+
+  let preFsTime=0,preFsPaused=false,preFsMuted=false;
+  function enterFullscreenObj(ch){
+    if(!ch||isImageChannel(ch)||!ch.url)return;
+    sndFsIn();
+    preFsTime=videoPlayer.currentTime||0;preFsPaused=videoPlayer.paused;preFsMuted=videoPlayer.muted;
+    try{videoPlayer.pause();}catch(e){}
+    videoPlayer.muted=true;fullscreenActive=true;document.body.classList.add('fs-active');
+    fsErrScreen.classList.remove('visible');
+    if(fsHls){fsHls.destroy();fsHls=null;}
+    fsVideo.pause();fsVideo.removeAttribute('src');fsVideo.load();fsVideo.muted=false;
+    const src=ch.url;
+    const seekAndPlay=()=>{if(preFsTime>0){try{fsVideo.currentTime=preFsTime;}catch(e){}}fsVideo.play().catch(()=>{});};
+    const fail=()=>{fsErrChan.textContent=ch.name||'';fsErrScreen.classList.add('visible');sndErr();};
+    if(fsVideo.canPlayType('application/vnd.apple.mpegurl')){fsVideo.src=src;fsVideo.addEventListener('loadedmetadata',seekAndPlay,{once:true});fsVideo.addEventListener('error',fail,{once:true});return;}
+    if(typeof Hls!=='undefined'&&Hls.isSupported()){
+      fsHls=new Hls({enableWorker:true});fsHls.loadSource(src);fsHls.attachMedia(fsVideo);
+      fsHls.on(Hls.Events.MANIFEST_PARSED,seekAndPlay);
+      fsHls.on(Hls.Events.ERROR,(_,d)=>{if(!d.fatal)return;if(d.type===Hls.ErrorTypes.MEDIA_ERROR){fsHls.recoverMediaError();return;}fail();fsHls.destroy();fsHls=null;});
+      return;
+    }
+    fsVideo.src=src;fsVideo.addEventListener('loadedmetadata',seekAndPlay,{once:true});
+  }
+  function exitFullscreen(){
+    if(!fullscreenActive)return;
+    sndFsOut();
+    const fsTime=fsVideo.currentTime||0;
+    if(fsHls){fsHls.destroy();fsHls=null;}
+    fsVideo.pause();fsVideo.removeAttribute('src');fsVideo.load();
+    fsErrScreen.classList.remove('visible');
+    videoPlayer.muted=preFsMuted;
+    if(currentPlaying&&!isImageChannel(currentPlaying)){
+      const resume=()=>{try{videoPlayer.currentTime=fsTime;}catch(e){}if(!preFsPaused)videoPlayer.play().catch(()=>{});updateGuideControlsUI();videoPlayer.removeEventListener('loadedmetadata',resume);};
+      if(videoPlayer.readyState>=1){try{videoPlayer.currentTime=fsTime;}catch(e){}if(!preFsPaused)videoPlayer.play().catch(()=>{});updateGuideControlsUI();}
+      else videoPlayer.addEventListener('loadedmetadata',resume,{once:true});
+    }
+    fullscreenActive=false;document.body.classList.remove('fs-active');
+  }
+  fsExitBtn.addEventListener('click',exitFullscreen);
+  window.addEventListener('keydown',e=>{if(e.key==='Escape'&&fullscreenActive)exitFullscreen();});
+  fsHotspot.addEventListener('click',e=>{e.stopPropagation();if(!currentChannelCanFs||fullscreenActive||!currentPlaying)return;enterFullscreenObj(currentPlaying);});
+
+  function parseM3U(text){
+    const lines=text.split(/\r?\n/),out=[];let cur=null;
+    for(const raw of lines){
+      const line=raw.trim();if(!line)continue;
+      if(line.startsWith('#EXTINF:')){
+        const info=line.slice(8),comma=info.indexOf(',');
+        const name=comma>=0?info.slice(comma+1).trim():'Channel';
+        const logo=(info.match(/tvg-logo="([^"]*)"/i)||[])[1]||'';
+        const group=(info.match(/group-title="([^"]*)"/i)||[])[1]||'';
+        const tvgChno=(info.match(/tvg-chno="([^"]*)"/i)||[])[1]||'';
+        cur={name:name||`Channel ${out.length+1}`,logo,group,url:null,image:null,number:tvgChno?parseInt(tvgChno,10):null,sourcePlaylistId:null};
+      }else if(line.startsWith('#')){continue;}
+      else if(cur&&!cur.url){cur.url=line;out.push(cur);cur=null;}
+    }
+    return out.filter(c=>c.url);
+  }
+  function esc(s){return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);}
+  function assignNumbers(list){let n=1;list.forEach(ch=>{if(ch.number==null){ch.number=n;n++;}});return n;}
+  function rebuildChannels(){const combined=[];playlists.forEach(p=>{const real=parseM3U(p.rawText);real.forEach(ch=>{ch.sourcePlaylistId=p.id;});combined.push(...real);});assignNumbers(combined);channels=combined;}
+
+  async function addPlaylist(fileName,rawText){
+    const id='pl-'+Date.now()+'-'+Math.floor(Math.random()*1e6);const real=parseM3U(rawText);
+    playlists.push({id,name:fileName,rawText,loadedAt:new Date().toLocaleString()});
+    await savePlaylists();rebuildChannels();renderOverview();renderPlaylistsTray();
+  }
+  async function removePlaylist(id){playlists=playlists.filter(p=>p.id!==id);await savePlaylists();rebuildChannels();renderOverview();renderPlaylistsTray();}
+  async function loadFiles(fileList){try{for(const f of Array.from(fileList)){const t=await f.text();await addPlaylist(f.name,t);}}catch(e){statusBadge.textContent='read error';}}
+  fileInput.addEventListener('change',async e=>{const files=e.target.files;if(!files||!files.length)return;sndSelect();statusBadge.textContent='reading…';await loadFiles(files);fileInput.value='';});
+
+  (async function boot(){
+    try{await loadPlaylists();}catch(e){}
+    loadDvr();rebuildChannels();renderOverview();renderPlaylistsTray();openHomeMenu();
+  })();
+
+  window.addEventListener('beforeunload',()=>{
+    try{stopRecording();}catch(e){}
+    destroyHls();if(fsHls)fsHls.destroy();
+  });
+})();
+</script>
+</body>
+</html>
